@@ -4,6 +4,10 @@ import { Editor, FillStyle, Shape, Text, type ShapeProps } from '@dgmjs/core';
 import { DGMEditor } from '@dgmjs/react';
 import data from './data.json';
 import { Palette } from './palette';
+import { useDemoStore } from "./demo-store";
+import { Menus } from "@/components/menus";
+import { PaletteToolbar } from "@/components/palette-toolbar";
+import { ShapeSidebar } from "@/components/shape-sidebar";
 
 declare global {
 	interface Window {
@@ -15,7 +19,8 @@ export const Activity = () => {
 	const [channelName, setChannelName] = useState<string>()
 	const [editor, setEditor] = useState<Editor | null>(null);
 	const [activeHandler, setActiveHandler] = useState<string>('Select');
-  
+	const demoStore = useDemoStore();
+
 	const handleMount = async (editor: Editor) => {
 	  window.editor = editor;
 	  setEditor(editor);
@@ -38,6 +43,13 @@ export const Activity = () => {
 	const handlePropsChange = (props: ShapeProps) => {
 	  window.editor.actions.update(props);
 	};
+
+	demoStore.setDoc(window.editor.getDoc());
+    demoStore.setCurrentPage(window.editor.getCurrentPage());
+
+	const handleSidebarSelect = (selection: Shape[]) => {
+		window.editor.selection.select(selection);
+	  };
 	
   
 
@@ -66,11 +78,19 @@ export const Activity = () => {
 			
 		</div>
 		
-		<DGMEditor
-        className="absolute inset-0 border rounded-lg"
-        onMount={handleMount}
-        onShapeInitialize={handleShapeInitialize}
-        onActiveHandlerChange={(handler) => setActiveHandler(handler)}
+		<div className="absolute top-2 left-60 right-60 h-10 border flex items-center justify-between bg-background">
+        <Menus />
+		
+        
+      </div>
+	  <PaletteToolbar/>
+	  <ShapeSidebar
+       doc={demoStore.doc!}
+        currentPage={demoStore.currentPage}
+        onSelect={handleSidebarSelect}
+        onPageSelect={(page) => {
+          window.editor.setCurrentPage(page);
+        }}
       />
 
 <Palette onPropsChange={handlePropsChange} />
