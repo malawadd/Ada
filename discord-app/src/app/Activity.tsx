@@ -1,13 +1,26 @@
 import { useEffect, useState } from 'react'
 import { useDiscordSdk } from '../hooks/useDiscordSdk'
-import { Editor, FillStyle, Shape, Text, type ShapeProps } from '@dgmjs/core';
-import { DGMEditor } from '@dgmjs/react';
+import { Editor, FillStyle, Shape, Text, Page, type ShapeProps } from '@dgmjs/core';
+import {
+	YjsDocSyncPlugin,
+	YjsUserPresencePlugin,
+  } from "@dgmjs/dgmjs-plugin-yjs";
 import data from './data.json';
 import { Palette } from './palette';
 import { useDemoStore } from "./demo-store";
 import { Menus } from "@/components/menus";
 import { PaletteToolbar } from "@/components/palette-toolbar";
 import { ShapeSidebar } from "@/components/shape-sidebar";
+import {
+	ContextMenu,
+	ContextMenuContent,
+	ContextMenuItem,
+	ContextMenuTrigger,
+  } from "@/components/ui/context-menu";
+import { EditorWrapper } from "./editor";
+import fontJson from "./fonts.json";
+import { Font, fetchFonts, insertFontsToDocument } from "./font-manager";
+
 
 declare global {
 	interface Window {
@@ -17,38 +30,83 @@ declare global {
 export const Activity = () => {
 	const { authenticated, discordSdk, status } = useDiscordSdk()
 	const [channelName, setChannelName] = useState<string>()
-	const [editor, setEditor] = useState<Editor | null>(null);
-	const [activeHandler, setActiveHandler] = useState<string>('Select');
+	const [isTextFocused, setIsTextFocused] = useState(false);
+
+  const urlSearchParams = new URLSearchParams(window.location.search);
+  const params = Object.fromEntries(urlSearchParams.entries());
 	const demoStore = useDemoStore();
 
 	const handleMount = async (editor: Editor) => {
-	  window.editor = editor;
-	  setEditor(editor);
-	  editor.loadFromJSON(data);
-	  editor.fitToScreen();
-	  window.addEventListener('resize', () => {
-		editor.fit();
-	  });
-	};
-  
-	const handleShapeInitialize = (shape: Shape) => {
-	  shape.fillStyle =
-		shape instanceof Text ? FillStyle.NONE : FillStyle.HACHURE;
-	  shape.fillColor = '$green6';
-	  shape.fontFamily = 'Gloria Hallelujah';
-	  shape.fontSize = 20;
-	  shape.roughness = 1;
-	};
-  
-	const handlePropsChange = (props: ShapeProps) => {
-	  window.editor.actions.update(props);
-	};
+		window.editor = editor;
+		insertFontsToDocument(fontJson as Font[]);
+		await fetchFonts(fontJson as Font[]);
+		console.log("editor",editor)
+	
+		window.editor.newDoc();
 
-	demoStore.setDoc(window.editor.getDoc());
-    demoStore.setCurrentPage(window.editor.getCurrentPage());
+		window.editor.transform.onTransaction.addListener(() => {
+		  // console.log("tx", tx);
+		});
+		window.editor.transform.onAction.addListener(() => {
+		  // console.log("action", action);
+		});
+	
+		// window.editor.factory.onShapeInitialize.addListener((shape: Shape) => {
+		//   shape.strokeWidth = 2;
+		//   shape.roughness = 1;
+		//   shape.fillColor = "$lime9";
+		//   shape.fillStyle = FillStyle.HACHURE;
+		// });
+	
+		// load from local storage
+		const localData = localStorage.getItem("local-data");
+		if (localData) {
+		  window.editor.loadFromJSON(JSON.parse(localData));
+		}
+		demoStore.setDoc(window.editor.getDoc());
+		demoStore.setCurrentPage(window.editor.getCurrentPage());
+		// window.editor.fitToScreen();
+	
+		window.addEventListener("resize", () => {
+		  window.editor.fit();
+		});
+	
+		
+	
+		
+	  };
+  
+
+
 
 	const handleSidebarSelect = (selection: Shape[]) => {
 		window.editor.selection.select(selection);
+	  };
+
+	  const handleShapeCreate = (shape: Shape) => {
+		if (!window.editor.getActiveHandlerLock()) {
+		  setTimeout(() => {
+			window.editor.selection.select([shape]);
+			window.editor.repaint();
+		  }, 0);
+		}
+	  };
+	
+	  const handleSelectionChange = (selection: Shape[]) => {
+		demoStore.setSelection([...selection]);
+	  };
+	
+	  const handleActiveHandlerChange = (handlerId: string) => {
+		demoStore.setActiveHandler(handlerId);
+		window.editor?.selection.deselectAll();
+		window.editor?.focus();
+	  };
+	  const handleCurrentPageChange = (page: Page) => {
+		demoStore.setCurrentPage(page);
+	  };
+	  const handleAction = () => {
+		const data = window.editor.store.toJSON();
+		localStorage.setItem("local-data", JSON.stringify(data));
 	  };
 	
   
@@ -70,13 +128,43 @@ export const Activity = () => {
 	}, [authenticated, discordSdk])
 
 	return (
-		<>
-		<div className="m-0 flex min-h-screen min-w-80 flex-col place-items-center justify-center">
-			<img src="/rocket.png" className="my-4 h-24 duration-300 hover:drop-shadow-[0_0_2em_#646cff]" alt="Discord" />
-			<h1 className="my-4 text-5xl font-bold">Hello, World</h1>
-			<h3 className="my-4 font-bold">{channelName ? `#${channelName}` : status}</h3>
-			
-		</div>
+		<div className="absolute inset-0 h-[calc(100dvh)] select-none">
+		
+
+		<ContextMenu>
+        <ContextMenuTrigger disabled={isTextFocused}>
+          <EditorWrapper
+            className="absolute inset-y-0 left-56 right-56"
+            darkMode={demoStore.darkMode}
+            options={{
+              showDOM: true,
+              keymapEventTarget: window,
+              imageResize: {
+                quality: 1,
+                maxWidth: 2800,
+                maxHeight: 2800,
+              },
+            }}
+            plugins={[new YjsDocSyncPlugin(), new YjsUserPresencePlugin()]}
+            showGrid={true}
+            onMount={handleMount}
+            onShapeCreate={handleShapeCreate}
+            onSelectionChange={handleSelectionChange}
+            onCurrentPageChange={handleCurrentPageChange}
+            onActiveHandlerChange={handleActiveHandlerChange}
+            onActiveHandlerLockChange={(lock) =>
+              demoStore.setActiveHandlerLock(lock)
+            }
+            onAction={handleAction}
+          />
+        </ContextMenuTrigger>
+        <ContextMenuContent>
+          <ContextMenuItem>Context Menu 1</ContextMenuItem>
+          <ContextMenuItem>Context Menu 2</ContextMenuItem>
+          <ContextMenuItem>Context Menu 3</ContextMenuItem>
+          <ContextMenuItem>Context Menu 4</ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
 		
 		<div className="absolute top-2 left-60 right-60 h-10 border flex items-center justify-between bg-background">
         <Menus />
@@ -93,7 +181,7 @@ export const Activity = () => {
         }}
       />
 
-<Palette onPropsChange={handlePropsChange} />
-	  </>
+
+</div>
 	)
 }
