@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef  } from 'react'
 import { useDiscordSdk } from '../hooks/useDiscordSdk'
 import { Editor, Page, Shape, ShapeProps, Image, ShapeFactory } from '@dgmjs/core'
 import { YjsDocSyncPlugin, YjsUserPresencePlugin } from '@dgmjs/dgmjs-plugin-yjs'
@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button'
 import { SelectShapeDialog } from '@/components/dialogs/select-shape-dialog'
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu'
 import { Input } from '@/components/ui/input'
-import { generateImageFromPrompt } from '@/lib/livepeer';
+import { generateImageFromPrompt } from '@/api/livepeer';
 
 declare global {
 	interface Window {
@@ -33,6 +33,7 @@ export const Activity = () => {
 	const [loading, setLoading] = useState(false);
 	const [model, setModel] = useState('ByteDance/SDXL-Lightning');
 	const [prompt, setPrompt] = useState('');
+	const inputRef = useRef<HTMLDivElement>(null);
 
 	const urlSearchParams = new URLSearchParams(window.location.search)
 	const params = Object.fromEntries(urlSearchParams.entries())
@@ -178,6 +179,39 @@ export const Activity = () => {
 		}
 	}
 
+	  // Handle closing the overlay
+	  const handleCloseOverlay = () => {
+		setShowInput(false);
+		setPrompt('');
+	  };
+	
+	  // Close overlay when clicking outside the input area
+	  useEffect(() => {
+		const handleClickOutside = (event: MouseEvent) => {
+		  if (inputRef.current && !inputRef.current.contains(event.target as Node)) {
+			handleCloseOverlay();
+		  }
+		};
+	
+		if (showInput) {
+		  document.addEventListener('mousedown', handleClickOutside);
+		} else {
+		  document.removeEventListener('mousedown', handleClickOutside);
+		}
+	
+		return () => {
+		  document.removeEventListener('mousedown', handleClickOutside);
+		};
+	  }, [showInput]);
+
+	  const handleKeyDown = (e: React.KeyboardEvent) => {
+		if (e.key === 'Enter' && !loading) {
+		  handleGenerateImage();
+		}
+	  };
+
+
+
 	useEffect(() => {
 		// Requesting the channel in GDMs (when the guild ID is null) requires
 		// the dm_channels.read scope which requires Discord approval.
@@ -237,12 +271,13 @@ export const Activity = () => {
 
 			{showInput && (
         <div className="absolute inset-0 flex items-center justify-center z-50">
-          <div className="flex flex-col items-center p-6 rounded-lg bg-white shadow-lg">
+          <div ref={inputRef} className="flex flex-col items-center p-6 rounded-lg bg-white shadow-lg">
             <Input
               type="text"
               placeholder="Enter image prompt"
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
+			  onKeyDown={handleKeyDown} 
               className="mb-4 w-72"
             />
             <select
