@@ -13,6 +13,7 @@ import {
   SmileIcon,
   SquareIcon,
   TypeIcon,
+  CircuitBoard,
 } from "lucide-react";
 import { ConnectorIcon, LineIcon } from "@/components/icons";
 import { Toggle } from "@/components/ui/toggle";
@@ -122,21 +123,23 @@ export function PaletteToolbar({ onShowInput }: PaletteToolbarProps) {
           <HighlighterIcon size={16} />
         </PaletteItem>
         <Separator orientation="vertical" className="dark:bg-gray-700 mx-0.5" />
-        <PaletteItem handlerId="Icon">
+        {/* <PaletteItem handlerId="Icon">
           <SmileIcon size={16} />
-        </PaletteItem>
+        </PaletteItem> */}
         <PaletteItem handlerId="Frame">
           <FrameIcon size={16} />
         </PaletteItem>
-        <PaletteItem handlerId="Mirror">
+        {/* <PaletteItem handlerId="Mirror">
           <AirplayIcon size={16} />
         </PaletteItem>
         <PaletteItem handlerId="Embed">
           <ScanIcon size={16} />
-        </PaletteItem>
-        <Toggle size="sm" pressed={activeHandler === "ImageURL"} onPressedChange={handleImageClick}>
-          <ImageIcon size={16} />
+        </PaletteItem> */}
+        <Separator orientation="vertical" className="dark:bg-gray-700 mx-0.5" />
+        <Toggle title="generate image" size="sm" pressed={activeHandler === "ImageURL"} onPressedChange={handleImageClick}>
+          <CircuitBoard size={16} />
         </Toggle>
+        
 
         {/* {showInput && (
         <div className="absolute inset-0 flex items-center justify-center  pointer-events-none">
