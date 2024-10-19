@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useDiscordSdk } from '../hooks/useDiscordSdk'
-import { Editor, Page, Shape, ShapeProps, Image,ShapeFactory  } from '@dgmjs/core'
+import { Editor, Page, Shape, ShapeProps, Image, ShapeFactory } from '@dgmjs/core'
 import { YjsDocSyncPlugin, YjsUserPresencePlugin } from '@dgmjs/dgmjs-plugin-yjs'
 import { nanoid } from 'nanoid'
 import { PaletteToolbar } from '@/components/palette-toolbar'
@@ -15,16 +15,20 @@ import { EditorWrapper } from './editor'
 import { Button } from '@/components/ui/button'
 import { SelectShapeDialog } from '@/components/dialogs/select-shape-dialog'
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu'
+import { Input } from '@/components/ui/input'
 
 declare global {
 	interface Window {
 		editor: Editor
+		addImageFromURL: (url: string) => Promise<void>
 	}
 }
 export const Activity = () => {
 	const { authenticated, discordSdk, status } = useDiscordSdk()
 	const [channelName, setChannelName] = useState<string>()
 	const [isTextFocused, setIsTextFocused] = useState(false)
+	const [imageUrl, setImageUrl] = useState('')
+	const [showInput, setShowInput] = useState(false)
 
 	const urlSearchParams = new URLSearchParams(window.location.search)
 	const params = Object.fromEntries(urlSearchParams.entries())
@@ -105,29 +109,40 @@ export const Activity = () => {
 	}
 
 	const handleValuesChange = (values: ShapeProps) => {
-		const shapes = window.editor.selection.getShapes();
-		window.editor.actions.update(values);
-		demoStore.setSelection([...shapes]);
-	  };
-	
-	  const handlePageChange = (pageProps: Partial<Page>) => {
-		const currentPage = window.editor.getCurrentPage();
-		window.editor.actions.update(pageProps, [currentPage!]);
-		demoStore.setCurrentPage(currentPage);
-	  };
-	
-	
-	  // Add image from URL
-	  const addImageFromURL = async (url: string) => {
-		if (window.editor) {
-		  const shapeFactory = new ShapeFactory(window.editor);
-		  const response = await fetch(url);
-		  const blob = await response.blob();
-		  const imageShape = await shapeFactory.createImage(blob, [0, 0]); 
-		  window.editor.actions.insert(imageShape);
-		}
-	  };
+		const shapes = window.editor.selection.getShapes()
+		window.editor.actions.update(values)
+		demoStore.setSelection([...shapes])
+	}
 
+	const handlePageChange = (pageProps: Partial<Page>) => {
+		const currentPage = window.editor.getCurrentPage()
+		window.editor.actions.update(pageProps, [currentPage!])
+		demoStore.setCurrentPage(currentPage)
+	}
+
+	// Add image from URL
+	const addImageFromURL = async (url: string) => {
+		if (window.editor) {
+			const shapeFactory = new ShapeFactory(window.editor)
+			const response = await fetch(url)
+			const blob = await response.blob()
+			const imageShape = await shapeFactory.createImage(blob, [0, 0])
+			window.editor.actions.insert(imageShape)
+		}
+	}
+
+	useEffect(() => {
+		// Register globally for the palette to access
+		window.addImageFromURL = addImageFromURL
+	}, [])
+
+	const handleAddImage = () => {
+		if (imageUrl && window.addImageFromURL) {
+			window.addImageFromURL(imageUrl)
+			setShowInput(false)
+			setImageUrl('')
+		}
+	}
 
 	useEffect(() => {
 		// Requesting the channel in GDMs (when the guild ID is null) requires
@@ -183,12 +198,31 @@ export const Activity = () => {
 			<div className="absolute left-60 right-60 top-2 flex h-10 items-center justify-between border bg-background">
 				<Menus />
 				<Options />
-				<button onClick={() => addImageFromURL('https://dgm.sh/images/hero-2.png')}>
-        Add Image
-      </button>
+				<button onClick={() => addImageFromURL('https://dgm.sh/images/hero-2.png')}>Add Image</button>
 			</div>
-			<PaletteToolbar />
-			
+
+			{showInput && (
+          <div className="absolute inset-0 flex items-center justify-center z-50">
+            <div className="flex flex-col items-center p-6 rounded-lg bg-white shadow-lg">
+              <Input
+                type="text"
+                placeholder="Enter image URL"
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                className="mb-4 w-72"
+              />
+              <button
+                onClick={handleAddImage}
+                className="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600"
+              >
+                Add Image
+              </button>
+            </div>
+          </div>
+        )}
+
+			<PaletteToolbar onShowInput={() => setShowInput(true)} />
+
 			<ShapeSidebar
 				doc={demoStore.doc!}
 				currentPage={demoStore.currentPage}
@@ -198,13 +232,14 @@ export const Activity = () => {
 				}}
 			/>
 			<PropertySidebar
-        doc={demoStore.doc!}
-        currentPage={demoStore.currentPage!}
-        shapes={demoStore.selection}
-        onChange={handleValuesChange}
-        onPageChange={handlePageChange}
-      />
-      <SelectShapeDialog />
+				doc={demoStore.doc!}
+				currentPage={demoStore.currentPage!}
+				shapes={demoStore.selection}
+				onChange={handleValuesChange}
+				onPageChange={handlePageChange}
+			/>
+			<SelectShapeDialog />
+			
 		</div>
 	)
 }
