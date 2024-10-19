@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button'
 import { SelectShapeDialog } from '@/components/dialogs/select-shape-dialog'
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu'
 import { Input } from '@/components/ui/input'
+import { generateImageFromPrompt } from '@/lib/livepeer';
 
 declare global {
 	interface Window {
@@ -29,6 +30,9 @@ export const Activity = () => {
 	const [isTextFocused, setIsTextFocused] = useState(false)
 	const [imageUrl, setImageUrl] = useState('')
 	const [showInput, setShowInput] = useState(false)
+	const [loading, setLoading] = useState(false);
+	const [model, setModel] = useState('ByteDance/SDXL-Lightning');
+	const [prompt, setPrompt] = useState('');
 
 	const urlSearchParams = new URLSearchParams(window.location.search)
 	const params = Object.fromEntries(urlSearchParams.entries())
@@ -123,18 +127,48 @@ export const Activity = () => {
 	// Add image from URL
 	const addImageFromURL = async (url: string) => {
 		if (window.editor) {
-			const shapeFactory = new ShapeFactory(window.editor)
-			const response = await fetch(url)
-			const blob = await response.blob()
-			const imageShape = await shapeFactory.createImage(blob, [0, 0])
-			window.editor.actions.insert(imageShape)
+		  const shapeFactory = new ShapeFactory(window.editor);
+		  const response = await fetch(url);
+		  const blob = await response.blob();
+		  const blobUrl = URL.createObjectURL(blob);
+	  
+		  try {
+			const imageShape = await shapeFactory.createImage(blob, [0, 0]);
+			window.editor.actions.insert(imageShape);
+		  } catch (error) {
+			console.error('Error adding image:', error);
+		  } finally {
+			// Revoke the Blob URL after use to free up memory
+			URL.revokeObjectURL(blobUrl);
+		  }
 		}
-	}
+	  };
 
 	useEffect(() => {
 		// Register globally for the palette to access
 		window.addImageFromURL = addImageFromURL
 	}, [])
+
+	const handleGenerateImage = async () => {
+		if (!prompt) return;
+	
+		setLoading(true);
+	
+		const imageUrl = await generateImageFromPrompt({
+		  modelId: model,
+		  prompt,
+		});
+	
+		setLoading(false);
+	
+		if (imageUrl) {
+		  window.addImageFromURL(imageUrl);
+		  setShowInput(false);
+		  setPrompt('');
+		} else {
+		  alert('Failed to generate image. Please try again.');
+		}
+	  };
 
 	const handleAddImage = () => {
 		if (imageUrl && window.addImageFromURL) {
@@ -202,24 +236,33 @@ export const Activity = () => {
 			</div>
 
 			{showInput && (
-          <div className="absolute inset-0 flex items-center justify-center z-50">
-            <div className="flex flex-col items-center p-6 rounded-lg bg-white shadow-lg">
-              <Input
-                type="text"
-                placeholder="Enter image URL"
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                className="mb-4 w-72"
-              />
-              <button
-                onClick={handleAddImage}
-                className="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600"
-              >
-                Add Image
-              </button>
-            </div>
+        <div className="absolute inset-0 flex items-center justify-center z-50">
+          <div className="flex flex-col items-center p-6 rounded-lg bg-white shadow-lg">
+            <Input
+              type="text"
+              placeholder="Enter image prompt"
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              className="mb-4 w-72"
+            />
+            <select
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              className="mb-4 w-72 p-2 border rounded"
+            >
+              <option value="ByteDance/SDXL-Lightning">ByteDance/SDXL-Lightning</option>
+              <option value="SG161222/RealVisXL_V4.0_Lightning">SG161222/RealVisXL_V4.0_Lightning</option>
+            </select>
+            <button
+              onClick={handleGenerateImage}
+              className="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600"
+              disabled={loading}
+            >
+              {loading ? 'Generating...' : 'Generate Image'}
+            </button>
           </div>
-        )}
+        </div>
+      )}
 
 			<PaletteToolbar onShowInput={() => setShowInput(true)} />
 
