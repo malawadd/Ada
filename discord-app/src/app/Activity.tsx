@@ -35,6 +35,7 @@ export const Activity = () => {
 	const [model, setModel] = useState('ByteDance/SDXL-Lightning');
 	const [prompt, setPrompt] = useState('');
 	const inputRef = useRef<HTMLDivElement>(null);
+	const [sharing, setSharing] = useState(false); 
 
 	const urlSearchParams = new URLSearchParams(window.location.search)
 	const params = Object.fromEntries(urlSearchParams.entries())
@@ -237,6 +238,42 @@ export const Activity = () => {
 		window.history.pushState({}, "", "/");
 	  };
 
+	  const handleShareToggle = () => {
+		if (!sharing) {
+		  // Start sharing
+		  const roomId = nanoid();
+		  collab.start(window.editor, roomId, generateUserIdentity());
+		  collab.flush();
+		  window.history.pushState({}, '', `?roomId=${roomId}`);
+		} else {
+		  // Stop sharing
+		  collab.stop();
+		  window.history.pushState({}, '', '/');
+		}
+		setSharing(!sharing); // Toggle sharing state
+	  };
+
+	  // Watch for URL changes to set the initial sharing state
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomId = urlParams.get('roomId');
+    setSharing(!!roomId); // Set sharing to true if roomId is present
+
+    // Listen for URL changes (e.g., when another user joins/leaves)
+    const handlePopState = () => {
+      const currentParams = new URLSearchParams(window.location.search);
+      const currentRoomId = currentParams.get('roomId');
+      setSharing(!!currentRoomId);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
+	
+
 
 
 	useEffect(() => {
@@ -293,8 +330,15 @@ export const Activity = () => {
 			<div className="absolute left-60 right-60 top-2 flex h-10 items-center justify-between border bg-background">
 				<Menus />
 				<Options />
-				<Button onClick={handleShare}>Share</Button>
-				<Button onClick={handleShareStop}>Stop</Button>
+				
+				<Button
+          onClick={handleShareToggle}
+          className={`py-2 px-4 rounded ${
+            sharing ? 'bg-red-500 text-white' : 'bg-blue-500 text-white'
+          }`}
+        >
+          {sharing ? 'Stop' : 'Share'}
+        </Button>
 				
 			</div>
 
