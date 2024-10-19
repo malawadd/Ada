@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useDiscordSdk } from '../hooks/useDiscordSdk'
-import { Editor, Page, Shape, ShapeProps } from '@dgmjs/core'
+import { Editor, Page, Shape, ShapeProps, Image,ShapeFactory  } from '@dgmjs/core'
 import { YjsDocSyncPlugin, YjsUserPresencePlugin } from '@dgmjs/dgmjs-plugin-yjs'
 import { nanoid } from 'nanoid'
 import { PaletteToolbar } from '@/components/palette-toolbar'
@@ -117,7 +117,16 @@ export const Activity = () => {
 	  };
 	
 	
-	
+	  // Add image from URL
+	  const addImageFromURL = async (url: string) => {
+		if (window.editor) {
+		  const shapeFactory = new ShapeFactory(window.editor);
+		  const response = await fetch(url);
+		  const blob = await response.blob();
+		  const imageShape = await shapeFactory.createImage(blob, [0, 0]); 
+		  window.editor.actions.insert(imageShape);
+		}
+	  };
 
 
 	useEffect(() => {
@@ -174,8 +183,12 @@ export const Activity = () => {
 			<div className="absolute left-60 right-60 top-2 flex h-10 items-center justify-between border bg-background">
 				<Menus />
 				<Options />
+				<button onClick={() => addImageFromURL('https://dgm.sh/images/hero-2.png')}>
+        Add Image
+      </button>
 			</div>
 			<PaletteToolbar />
+			
 			<ShapeSidebar
 				doc={demoStore.doc!}
 				currentPage={demoStore.currentPage}
