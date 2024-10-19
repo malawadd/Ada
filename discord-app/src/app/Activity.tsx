@@ -17,6 +17,7 @@ import { SelectShapeDialog } from '@/components/dialogs/select-shape-dialog'
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu'
 import { Input } from '@/components/ui/input'
 import { generateImageFromPrompt } from '@/api/livepeer';
+import { collab, generateUserIdentity } from "./collab";
 
 declare global {
 	interface Window {
@@ -38,6 +39,7 @@ export const Activity = () => {
 	const urlSearchParams = new URLSearchParams(window.location.search)
 	const params = Object.fromEntries(urlSearchParams.entries())
 	const demoStore = useDemoStore()
+	const roomId = params.roomId;
 
 	useEffect(() => {
 		const focusinHandler = (e: FocusEvent) => {
@@ -60,7 +62,12 @@ export const Activity = () => {
 		await fetchFonts(fontJson as Font[])
 		console.log('editor', editor)
 
-		window.editor.newDoc()
+		if (roomId) {
+			collab.start(window.editor, roomId, generateUserIdentity());
+			console.log("collab started with roomId", roomId);
+		  } else {
+			window.editor.newDoc();
+		  }
 
 		window.editor.transform.onTransaction.addListener(() => {
 			// console.log("tx", tx);
@@ -81,6 +88,14 @@ export const Activity = () => {
 		window.addEventListener('resize', () => {
 			window.editor.fit()
 		})
+
+		collab.oDocReady.addListener(() => {
+			const doc = window.editor.getDoc();
+			if (doc) {
+			  demoStore.setDoc(doc);
+			  demoStore.setCurrentPage(window.editor.getCurrentPage());
+			}
+		  });
 	}
 
 	const handleSidebarSelect = (selection: Shape[]) => {
@@ -210,6 +225,18 @@ export const Activity = () => {
 		}
 	  };
 
+	  const handleShare = () => {
+		const roomId = nanoid();
+		collab.start(window.editor, roomId!, generateUserIdentity());
+		collab.flush();
+		window.history.pushState({}, "", `?roomId=${roomId}`);
+	  };
+	
+	  const handleShareStop = () => {
+		collab.stop();
+		window.history.pushState({}, "", "/");
+	  };
+
 
 
 	useEffect(() => {
@@ -266,7 +293,9 @@ export const Activity = () => {
 			<div className="absolute left-60 right-60 top-2 flex h-10 items-center justify-between border bg-background">
 				<Menus />
 				<Options />
-				<button onClick={() => addImageFromURL('https://dgm.sh/images/hero-2.png')}>Add Image</button>
+				<Button onClick={handleShare}>Share</Button>
+				<Button onClick={handleShareStop}>Stop</Button>
+				
 			</div>
 
 			{showInput && (
