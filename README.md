@@ -92,3 +92,9 @@
     NODE_OPTIONS="--enable-source-maps"
     PORT="3000"
     ```
+## Discord Link 
+https://discord.com/oauth2/authorize?client_id=1295016080078536726
+
+## Issue & bugs 
+- Generating images currently dont work within discord due to thier safty policies. 
+- 
