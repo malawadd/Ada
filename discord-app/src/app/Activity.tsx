@@ -343,31 +343,43 @@ export const Activity = () => {
 			</div>
 
 			{showInput && (
-        <div className="absolute inset-0 flex items-center justify-center z-50">
-          <div ref={inputRef} className="flex flex-col items-center p-6 rounded-lg bg-white shadow-lg">
+        <div className={`absolute inset-0 flex items-center justify-center z-50 `}>
+          <div
+            ref={inputRef}
+            className={`flex flex-col items-center p-6 rounded-lg shadow-lg ${
+              demoStore.darkMode ? 'bg-gray-800 text-white' : 'bg-white text-black'
+            }`}
+          >
             <Input
               type="text"
               placeholder="Enter image prompt"
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-			  onKeyDown={handleKeyDown} 
-              className="mb-4 w-72"
+              className={`mb-4 w-72 ${demoStore.darkMode ? 'bg-gray-700 text-white placeholder-gray-400' : 'bg-white text-black placeholder-gray-500'}`}
             />
             <select
               value={model}
               onChange={(e) => setModel(e.target.value)}
-              className="mb-4 w-72 p-2 border rounded"
+              className={`mb-4 w-72 p-2 border rounded ${demoStore.darkMode ? 'bg-gray-700 text-white' : 'bg-white text-black'}`}
             >
               <option value="ByteDance/SDXL-Lightning">ByteDance/SDXL-Lightning</option>
               <option value="SG161222/RealVisXL_V4.0_Lightning">SG161222/RealVisXL_V4.0_Lightning</option>
             </select>
-            <button
-              onClick={handleGenerateImage}
-              className="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600"
-              disabled={loading}
-            >
-              {loading ? 'Generating...' : 'Generate Image'}
-            </button>
+            <div className="flex gap-4">
+              <button
+                onClick={handleGenerateImage}
+                className={`py-2 px-4 rounded-lg ${demoStore.darkMode ? 'bg-blue-500 hover:bg-blue-600 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'}`}
+                disabled={loading}
+              >
+                {loading ? 'Generating...' : 'Generate Image'}
+              </button>
+              <button
+                onClick={() => setShowInput(false)}
+                className={`py-2 px-4 rounded-lg ${demoStore.darkMode ? 'bg-gray-600 hover:bg-gray-700 text-white' : 'bg-gray-300 hover:bg-gray-400 text-black'}`}
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}
