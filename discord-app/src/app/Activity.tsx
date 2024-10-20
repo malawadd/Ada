@@ -371,14 +371,15 @@ export const Activity = () => {
                 className={`py-2 px-4 rounded-lg ${demoStore.darkMode ? 'bg-blue-500 hover:bg-blue-600 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'}`}
                 disabled={loading}
               >
-                {loading ? 'Generating...' : 'Generate Image'}
+                 {loading ? (
+                <div className="flex items-center">
+                  Generating<span className="loading-dots"></span>
+                </div>
+              ) : (
+                'Generate Image'
+              )}
               </button>
-              <button
-                onClick={() => setShowInput(false)}
-                className={`py-2 px-4 rounded-lg ${demoStore.darkMode ? 'bg-gray-600 hover:bg-gray-700 text-white' : 'bg-gray-300 hover:bg-gray-400 text-black'}`}
-              >
-                Cancel
-              </button>
+              
             </div>
           </div>
         </div>
